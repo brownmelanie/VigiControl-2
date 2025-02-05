@@ -5,7 +5,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { jwtDecode } from 'jwt-decode';
 
 import * as Location from 'expo-location';
-//import { startLocationTracking } from "../components/locationTracking";
+import { startLocationTracking } from "../components/locationTracking";
 
 import { API_URL } from "../configAPI";
 
@@ -52,7 +52,7 @@ export default function Login() {
                 await AsyncStorage.setItem("decodedToken", JSON.stringify(decodedToken));
 
                 router.push("/main");
-/*
+
                 const { status } = await Location.requestForegroundPermissionsAsync();
                 if (status !== "granted") {
                     console.error("Permiso de ubicación denegado");
@@ -104,7 +104,7 @@ export default function Login() {
                         `Error ${checksResponse.status}`,
                         "No se pudo realizar el chequeo de ubicación. Intente nuevamente"
                     );
-                } */
+                }
             } else {
                 const errorText = await response.text();
                 console.error(
