@@ -1,9 +1,13 @@
 import React from 'react';
 import { Pressable, Text, StyleSheet, Image, View } from 'react-native';
 
-const Btn = ({ logoSource, text, onPress }) => {
+const Btn = ({ logoSource, text, onPress, disabled }) => {
     return (
-        <Pressable style={styles.button} onPress={onPress}>
+        <Pressable
+            disabled={disabled}
+            style={[styles.button, disabled && styles.disabledButton]} 
+            onPress={onPress}
+        >
             <View style={styles.contentContainer}>
                 <Image source={logoSource} style={styles.logo} />
                 <Text style={styles.text}>{text}</Text>
@@ -23,6 +27,9 @@ const styles = StyleSheet.create({
         borderBottomLeftRadius: 50,
         marginTop: 10, //10
         marginBottom: 10, //10
+    },
+    disabledButton: {
+        opacity: 0.5,
     },
     contentContainer: {
         flexDirection: 'row',

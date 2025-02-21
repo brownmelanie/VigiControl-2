@@ -1,15 +1,17 @@
-import React from "react";
-import { Pressable, Text, Image, Alert, StyleSheet } from "react-native";
+import React, {useState} from "react";
+import { Pressable, Text, Image, Alert, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from "../configAPI";
 import { stopLocationTracking } from "./locationTracking";
 
-const LogoutButton = ({ logoSource, buttonText }) => {
+
+const LogoutButton = ({ logoSource, buttonText, setIsLoading, disabled }) => {
     const router = useRouter();
 
     const handleLogout = async () => {
+        setIsLoading(true);
         try {
             const accessToken = await AsyncStorage.getItem("accessToken");
             if (!accessToken) {
@@ -62,13 +64,19 @@ const LogoutButton = ({ logoSource, buttonText }) => {
                 "Error de Logout", 
                 `No se pudo cerrar la sesión. Detalles: ${error.message}`
             );
+        } finally {
+            setIsLoading(false);
         }
     };
 
     return (
-        <Pressable style={styles.button} onPress={handleLogout}>
+        <Pressable 
+            style={[styles.button, disabled && styles.disabledButton]} 
+            onPress={handleLogout} 
+            disabled={disabled}
+        >
             <Image source={logoSource} style={styles.logo} />
-            <Text style={styles.buttonText}>{buttonText}</Text>
+            <Text style={styles.buttonText}>{disabled ? "Saliendo..." : buttonText}</Text>
         </Pressable>
     );
 };
@@ -79,6 +87,9 @@ const styles = StyleSheet.create({
         alignItems: "center",
         paddingBottom: 30,
         paddingTop: 20,
+    },
+    disabledButton: {
+        opacity: 0.5,
     },
     logo: {
         width: 40,

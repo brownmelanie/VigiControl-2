@@ -4,11 +4,13 @@ import * as Location from 'expo-location';
 import { API_URL } from "../configAPI";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Navbar from "../components/navbar";
+import LoadingOverlay from '../components/loader';
 
 const background = require("../assets/background.png")
 
 const Informe = () => {
     const [text, setText] =  useState("");
+    const [isLoading, setIsLoading] = useState(false);
 
     const dismissKeyboard = () => {
         Keyboard.dismiss();
@@ -19,6 +21,8 @@ const Informe = () => {
             Alert.alert("Error", "Por favor ingrese el texto del reporte");
             return;
         }
+
+        setIsLoading(true);
 
         try {
             const location = await Location.getCurrentPositionAsync({});
@@ -63,6 +67,8 @@ const Informe = () => {
         } catch (error) {
             console.error(error);
             Alert.alert("Error", "Hubo un problema al procesar el reporte. Inténtalo nuevamente.");
+        } finally {
+            setIsLoading(false);
         }
     }
 
@@ -96,13 +102,18 @@ const Informe = () => {
                 </View>
 
                 <View style={styles.sendButtonContainer}>
-                    <TouchableOpacity style={styles.sendButton} onPress={handleSendReport}>
+                    <TouchableOpacity 
+                        style={[styles.sendButton, isLoading && styles.disabledButton]}
+                        onPress={handleSendReport}
+                        disabled={isLoading}
+                    >
                         <Text style={styles.sendButtonText}>PROCESAR REPORTE</Text>
                     </TouchableOpacity>
                 </View>
             </View>
             </ScrollView>
             </KeyboardAvoidingView>
+            <LoadingOverlay isVisible={isLoading} />
         </ImageBackground>
         </TouchableWithoutFeedback>
     )

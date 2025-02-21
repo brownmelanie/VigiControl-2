@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal, View, Pressable, Text, StyleSheet, Alert } from "react-native";
 import { useRouter } from 'expo-router';
 import { API_URL } from "../configAPI";
@@ -7,15 +7,52 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { stopLocationTracking } from './locationTracking';
 
 import Btn from './buttonsHome';
+import LoadingOverlay from './loader';
 
 const arriboQRBtn = require("../assets/arriboQRBtn.png")
 const partidaBtn = require("../assets/partidaBtn.png")
 
 const RondaModal = ({ visible, onClose }) => {
     const router = useRouter();
+    const [isLoading, setIsLoading] = useState(false);
+    const [canPartida, setCanPartida] = useState(false);
 
-    const handlePartida = async () => {
+    useEffect(() => {
+        const checkPermission = async () => {
+          try {
+            const decodedTokenStr = await AsyncStorage.getItem("decodedToken");
+            if (decodedTokenStr) {
+              const decodedToken = JSON.parse(decodedTokenStr);
+              const permissions = decodedToken["claims/permissions"] || [];
+              if (permissions.includes("partidas:create")) {
+                setCanPartida(true);
+              }
+            }
+          } catch (error) {
+            console.error("Error al obtener o parsear el token decodificado:", error);
+          }
+        };
+    
+        checkPermission();
+      }, []);
+
+    const handlePressWithLoading = async (action) => {
+        setIsLoading(true);
         try {
+            await action();
+        } catch (error) {
+            console.error("Error:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handlePartida = () => {
+        if (!canPartida) {
+            Alert.alert("Permiso denegado", "Sólo los supervisores pueden realizar esta acción.");
+            return;
+          }
+        handlePressWithLoading(async () => {
             const accessToken = await AsyncStorage.getItem("accessToken");
             if (!accessToken) {
                 Alert.alert("Error", "No se encontró el token de usuario");
@@ -44,20 +81,20 @@ const RondaModal = ({ visible, onClose }) => {
             }
 
             await stopLocationTracking();
-    
             onClose();
-            
-        } catch (error) {
-            console.error('Error durante la partida:', error);
-            Alert.alert(
-                "Error", 
-                "No se pudo registrar la partida correctamente. Por favor, intente nuevamente."
-            );
-        }
+        });
     };
 
     const handleQRScan = () => {
-        router.push("/qrscanner");
+        handlePressWithLoading(async () => {
+            router.push("/qrscanner");
+        });
+    };
+
+    const handleCancel = () => {
+        handlePressWithLoading(async () => {
+            onClose();
+        });
     };
 
     return (
@@ -68,6 +105,7 @@ const RondaModal = ({ visible, onClose }) => {
             onRequestClose={onClose}
         >
             <View style={styles.modalOverlay}>
+                <LoadingOverlay isVisible={isLoading} /> 
                 <View style={styles.modalContainer}>
                     <Btn 
                         logoSource={arriboQRBtn} 
@@ -78,8 +116,9 @@ const RondaModal = ({ visible, onClose }) => {
                         logoSource={partidaBtn} 
                         text="PARTIDA" 
                         onPress={handlePartida}
+                        disabled={!canPartida}
                     />
-                    <Pressable style={styles.closeButton} onPress={onClose}>
+                    <Pressable style={styles.closeButton} onPress={handleCancel}>
                         <Text style={styles.closeButtonText}>Cancelar</Text>
                     </Pressable>
                 </View>

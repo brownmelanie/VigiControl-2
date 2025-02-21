@@ -6,6 +6,7 @@ import { jwtDecode } from 'jwt-decode';
 
 import * as Location from 'expo-location';
 import { startLocationTracking } from "../components/locationTracking";
+import LoadingOverlay from '../components/loader';
 
 import { API_URL } from "../configAPI";
 
@@ -15,6 +16,7 @@ const background = require("../assets/background.png");
 export default function Login() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
 
     const handleLogin = async () => {
@@ -25,6 +27,8 @@ export default function Login() {
             console.log("Error: usuario o contraseña no ingresados");
             return;
         }
+
+        setIsLoading(true);
     
         try {
             console.log("Enviando datos al servidor:", { email, password });
@@ -51,7 +55,7 @@ export default function Login() {
                 await AsyncStorage.setItem("refreshToken", refreshToken);
                 await AsyncStorage.setItem("decodedToken", JSON.stringify(decodedToken));
 
-                router.push("/main");
+                    router.push("/main");
 
                 const { status } = await Location.requestForegroundPermissionsAsync();
                 if (status !== "granted") {
@@ -100,27 +104,20 @@ export default function Login() {
                     console.error(
                         `Error en /checks: Código ${checksResponse.status}, Respuesta: ${errorText}`
                     );
-                    Alert.alert(
-                        `Error ${checksResponse.status}`,
-                        "No se pudo realizar el chequeo de ubicación. Intente nuevamente"
-                    );
+                    Alert.alert(`Error ${checksResponse.status}`, "No se pudo realizar el chequeo de ubicación. Intente nuevamente");
                 }
             } else {
                 const errorText = await response.text();
                 console.error(
                     `Error de inicio de sesión: Código ${response.status}, Respuesta: ${errorText}`
                 );
-                Alert.alert(
-                    `Error ${response.status}`,
-                    "El usuario o contraseña ingresados son incorrectos. Intente nuevamente"
-                );
+                Alert.alert(`Error ${response.status}`,"El usuario o contraseña ingresados son incorrectos. Intente nuevamente");
             }
         } catch (error) {
             console.error("Error al iniciar sesión:", error);
-            Alert.alert(
-                "Error",
-                "No se pudo conectar con el servidor, intente nuevamente más tarde"
-            );
+            Alert.alert("Error", "No se pudo conectar con el servidor, intente nuevamente más tarde");
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -162,8 +159,8 @@ export default function Login() {
                         />
                     </View>
                     <View style={styles.containerBtn}>
-                        <Pressable style={styles.btn} onPress={handleLogin}>
-                            <Text style={styles.btnText}>Iniciar Sesión</Text>
+                        <Pressable style={styles.btn} onPress={handleLogin} disabled={isLoading}>
+                        <Text style={styles.btnText}>{isLoading ? "Cargando..." : "Iniciar Sesión"}</Text>
                         </Pressable>
                     </View>
                 </View>
@@ -174,6 +171,7 @@ export default function Login() {
                     </Text>.
                 </Text>
             </KeyboardAvoidingView>
+            <LoadingOverlay isVisible={isLoading} />
         </ImageBackground>
     );
 }

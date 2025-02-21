@@ -1,11 +1,12 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Modal, Alert } from "react-native";
+import React, { useState, useRef, useCallback } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, Modal, Alert, ActivityIndicator } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import Slider from "@react-native-community/slider";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import * as Location from "expo-location"
 import { API_URL } from "../configAPI";
+import LoadingOverlay from "./loader";
 
 export default function QRScanner() {
     const [facing, setFacing] = useState("back");
@@ -30,6 +31,12 @@ export default function QRScanner() {
         try {
             setIsLoading(true);
 
+            if (!checkpointId) {
+                console.error('CheckpointId inválido:', checkpointId);
+                Alert.alert("Error", "Código QR inválido");
+                return false;
+            }
+
             const { status } = await Location.requestForegroundPermissionsAsync();
             if (status !== 'granted') {
                 Alert.alert('Error', 'Se requieren permisos de ubicación');
@@ -38,7 +45,7 @@ export default function QRScanner() {
 
             const accessToken = await AsyncStorage.getItem("accessToken");
             if (!accessToken) {
-                Alert.alert("Error", "No se encontró el token de usuario");
+                Alert.alert("Error", "No se encontró el token de usuario, vuelva a iniciar sesión.");
                 return false;
             }
 
@@ -60,6 +67,11 @@ export default function QRScanner() {
                 body: JSON.stringify(requestData)
             });
 
+            console.log('Respuesta del servidor:', {
+                status: response.status,
+                ok: response.ok
+            });
+
             const result = await response.json();
 
             if (response.ok) {
@@ -77,6 +89,10 @@ export default function QRScanner() {
             }
         } catch (error) {
             console.error('Error al enviar request:', error);
+            Alert.alert(
+                "Error",
+                error.message || "Ocurrió un error al procesar el código QR. Por favor, intente nuevamente."
+            );
             return false;
         } finally {
             setIsLoading(false);
@@ -85,7 +101,9 @@ export default function QRScanner() {
 
     const handleBarCodeScanned = useCallback(async ({ data }) => {
         setIsBarcodeMode(false);
+        setIsLoading(true);
         
+        setTimeout(() => {
         try {
             setBarcodeResult(data);
             Alert.alert(
@@ -97,32 +115,53 @@ export default function QRScanner() {
                         onPress: () => {
                             setBarcodeResult(null);
                             setIsBarcodeMode(true);
+                            setIsLoading(false);
                         },
                         style: "cancel"
                     },
                     {
                         text: "Aceptar",
                         onPress: async () => {
-                            const success = await sendCheckInRequest(data);
-                            if (success) {
-                                Alert.alert(
-                                    "Escaneado exitoso",
-                                    "Punto de control registrado correctamente",
-                                    [
-                                        {
-                                            text: "OK",
-                                            onPress: () => {
-                                                setBarcodeResult(null);
-                                                router.back();
+                            setIsLoading(true);
+                            try {
+
+                                const success = await sendCheckInRequest(data);
+                            
+                                if (success) {
+                                    Alert.alert(
+                                        "Escaneado exitoso",
+                                        "Punto de control registrado correctamente",
+                                        [
+                                            {
+                                                text: "OK",
+                                                onPress: () => {
+                                                    setBarcodeResult(null);
+                                                    router.back();
+                                                }
                                             }
-                                        }
-                                    ],
-                                    { cancelable: false }
-                                );
-                            } else {
+                                        ],
+                                        { cancelable: false }
+                                    );
+                                } else {
+                                    Alert.alert(
+                                        "Error",
+                                        "No se pudo procesar el punto de control. Intente nuevamente.",
+                                        [
+                                            {
+                                                text: "OK",
+                                                onPress: () => {
+                                                    setBarcodeResult(null);
+                                                    setIsBarcodeMode(true);
+                                                }
+                                            }
+                                        ]
+                                    );
+                                }
+                            } catch (error) {
+                                console.error('Error al procesar QR:', error);
                                 Alert.alert(
                                     "Error",
-                                    "No se pudo procesar el punto de control. Intente nuevamente.",
+                                    "Ocurrió un error al procesar el código. Por favor, intente nuevamente.",
                                     [
                                         {
                                             text: "OK",
@@ -133,6 +172,8 @@ export default function QRScanner() {
                                         }
                                     ]
                                 );
+                            } finally {
+                                setIsLoading(false);
                             }
                         }
                     }
@@ -154,7 +195,10 @@ export default function QRScanner() {
                     }
                 ]
             );
+        } finally {
+            setIsLoading(false);
         }
+        }, 200);
     }, [router]);
 
     if (!permission) {
@@ -168,7 +212,7 @@ export default function QRScanner() {
             Se necesita acceso a la cámara para escanear QR
             </Text>
             <TouchableOpacity style={styles.button} onPress={requestPermission}>
-            <Text style={styles.buttonText}>Acceso a la cámara</Text>
+                <Text style={styles.buttonText}>Acceso a la cámara</Text>
             </TouchableOpacity>
         </View>
         );
@@ -176,37 +220,41 @@ export default function QRScanner() {
 
     return (
         <View style={styles.container}>
-        <CameraView
-            ref={cameraRef}
-            style={styles.camera}
-            facing={facing}
-            zoom={zoom}
-            barcodeScannerSettings={{
-                barcodeTypes: ["qr", "ean13", "ean8", "pdf417", "aztec", "datamatrix"],
-            }}
-            onBarcodeScanned={isBarcodeMode ? handleBarCodeScanned : undefined}
-        >
-            <View style={styles.controls}>
-                <TouchableOpacity style={styles.button} onPress={toggleCameraFacing}>
-                    <Text style={styles.buttonText}>GIRAR CAMARA</Text>
-                </TouchableOpacity>
-                <View style={styles.sliderContainer}>
-                    <Text style={styles.zoomText}>Zoom: {zoom.toFixed(1)}x</Text>
-                    <Slider
-                        style={styles.slider}
-                        minimumValue={0}
-                        maximumValue={1}
-                        value={zoom}
-                        onValueChange={handleZoomChange}
-                    />
+            <LoadingOverlay isVisible={isLoading} /> 
+            
+            {!isLoading && (
+            <CameraView
+                ref={cameraRef}
+                style={styles.camera}
+                facing={facing}
+                zoom={zoom}
+                barcodeScannerSettings={{
+                    barcodeTypes: ["qr", "ean13", "ean8", "pdf417", "aztec", "datamatrix"],
+                }}
+                onBarcodeScanned={isBarcodeMode ? handleBarCodeScanned : undefined}
+            >
+                <View style={styles.controls}>
+                    <TouchableOpacity style={styles.button} onPress={toggleCameraFacing}>
+                        <Text style={styles.buttonText}>GIRAR CAMARA</Text>
+                    </TouchableOpacity>
+                    <View style={styles.sliderContainer}>
+                        <Text style={styles.zoomText}>Zoom: {zoom.toFixed(1)}x</Text>
+                        <Slider
+                            style={styles.slider}
+                            minimumValue={0}
+                            maximumValue={1}
+                            value={zoom}
+                            onValueChange={handleZoomChange}
+                        />
+                    </View>
                 </View>
-            </View>
-        </CameraView>
+            </CameraView>
+            )}
 
-        <TouchableOpacity style={styles.exitButton} onPress={() => router.back()}>
-            <Text style={styles.exitButtonText}>CERRAR CAMARA</Text>
+        <TouchableOpacity style={styles.exitButton} onPress={() => router.push("/main")}>
+            <Text style={styles.exitButtonText}>{isLoading ? "CARGANDO..." : "CERRAR CÁMARA"}</Text>
         </TouchableOpacity>
-
+{/*
         <Modal
             animationType="slide"
             transparent={true}
@@ -214,16 +262,22 @@ export default function QRScanner() {
             onRequestClose={() => setBarcodeResult(null)}
         >
         <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>QR Detectado:</Text>
-            <Text style={styles.modalText}>{barcodeResult}</Text>
-            <TouchableOpacity
-                style={[styles.button, styles.modalButton]}
-                onPress={() => setBarcodeResult(null)}
-            >
-                <Text style={styles.buttonText}>Cerrar</Text>
-            </TouchableOpacity>
+        {barcodeResult ? (
+            <>
+                <Text style={styles.modalTitle}>QR Detectado:</Text>
+                <Text style={styles.modalText}>{barcodeResult}</Text>
+                <TouchableOpacity
+                    style={[styles.button, styles.modalButton]}
+                    onPress={() => setBarcodeResult(null)}
+                >
+                    <Text style={styles.buttonText}>Cerrar</Text>
+                </TouchableOpacity>
+            </>
+        ) : (
+            <ActivityIndicator size="large" color="#0000ff" />
+        )}
         </View>
-        </Modal>
+        </Modal> */}
     </View>
     );
 }

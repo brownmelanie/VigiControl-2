@@ -24,6 +24,8 @@ const PanicoButton = ({ logoSource, text }) => {
             });
 
             const data = await response.json();
+            console.log("Respuesta de refresh token:", response.status, data);
+
             if (response.ok) {
                 await AsyncStorage.setItem("accessToken", data.accessToken);
                 await AsyncStorage.setItem("refreshToken", data.refreshToken);
@@ -31,6 +33,7 @@ const PanicoButton = ({ logoSource, text }) => {
                 throw new Error("Inicie sesión nuevamente");
             }
         } catch (error) {
+            console.error("Error al refrescar token:", error);
             Alert.alert("Error", error.message);
             throw error;
         }
