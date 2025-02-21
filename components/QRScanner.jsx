@@ -136,7 +136,7 @@ export default function QRScanner() {
                                                 text: "OK",
                                                 onPress: () => {
                                                     setBarcodeResult(null);
-                                                    router.back();
+                                                    router.push("/main");
                                                 }
                                             }
                                         ],
@@ -254,30 +254,6 @@ export default function QRScanner() {
         <TouchableOpacity style={styles.exitButton} onPress={() => router.push("/main")}>
             <Text style={styles.exitButtonText}>{isLoading ? "CARGANDO..." : "CERRAR CÁMARA"}</Text>
         </TouchableOpacity>
-{/*
-        <Modal
-            animationType="slide"
-            transparent={true}
-            visible={!!barcodeResult}
-            onRequestClose={() => setBarcodeResult(null)}
-        >
-        <View style={styles.modalContainer}>
-        {barcodeResult ? (
-            <>
-                <Text style={styles.modalTitle}>QR Detectado:</Text>
-                <Text style={styles.modalText}>{barcodeResult}</Text>
-                <TouchableOpacity
-                    style={[styles.button, styles.modalButton]}
-                    onPress={() => setBarcodeResult(null)}
-                >
-                    <Text style={styles.buttonText}>Cerrar</Text>
-                </TouchableOpacity>
-            </>
-        ) : (
-            <ActivityIndicator size="large" color="#0000ff" />
-        )}
-        </View>
-        </Modal> */}
     </View>
     );
 }
