@@ -1,5 +1,5 @@
-import React, { useState, useRef, useCallback } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Modal, Alert, ActivityIndicator } from "react-native";
+import React, { useEffect ,useState, useRef, useCallback } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, Alert, BackHandler } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import Slider from "@react-native-community/slider";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -11,7 +11,6 @@ import LoadingOverlay from "./loader";
 export default function QRScanner() {
     const [facing, setFacing] = useState("back");
     const [zoom, setZoom] = useState(0);
-
     const [permission, requestPermission] = useCameraPermissions();
     const [isBarcodeMode, setIsBarcodeMode] = useState(true);
     const [barcodeResult, setBarcodeResult] = useState(null);
@@ -26,6 +25,17 @@ export default function QRScanner() {
     const handleZoomChange = useCallback((value) => {
         setZoom(value);
     }, []);
+
+    useEffect(() => {
+        const handleBackButton = () => {
+            router.replace("/main");
+            return true;
+        };
+
+        BackHandler.addEventListener("hardwareBackPress", handleBackButton);
+
+        return () => BackHandler.removeEventListener("hardwareBackPress", handleBackButton);
+    }, [router]);
 
     const sendCheckInRequest = async (checkpointId) => {
         try {
@@ -136,7 +146,7 @@ export default function QRScanner() {
                                                 text: "OK",
                                                 onPress: () => {
                                                     setBarcodeResult(null);
-                                                    router.push("/main");
+                                                    router.replace("/main");
                                                 }
                                             }
                                         ],
